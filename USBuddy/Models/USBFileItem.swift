@@ -216,3 +216,15 @@ struct ImportConflictItem: Identifiable, Sendable {
         ByteCountFormatter.string(fromByteCount: newSize, countStyle: .file)
     }
 }
+
+struct CleanupLogEntry: Identifiable, Sendable {
+    let id = UUID()
+    let name: String
+    let path: String
+    let size: Int64
+    let succeeded: Bool
+
+    var formattedSize: String {
+        ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+}

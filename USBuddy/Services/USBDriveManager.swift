@@ -38,6 +38,14 @@ final class USBDriveManager {
     var importCurrentIndex: Int = 0
     var importTotalCount: Int = 0
     var importCurrentFileName: String = ""
+    var showCleanupProgressSheet: Bool = false
+    var isCleaningJunk: Bool = false
+    var cleanupTotalCount: Int = 0
+    var cleanupProcessedCount: Int = 0
+    var cleanupDeletedCount: Int = 0
+    var cleanupFreedBytes: Int64 = 0
+    var cleanupCurrentFileName: String = ""
+    var cleanupLogs: [CleanupLogEntry] = []
     var pendingImportConflicts: [ImportConflictItem] = []
     var showImportConflictSheet: Bool = false
     var lastImportSuccessCount: Int = 0
@@ -319,11 +327,13 @@ final class USBDriveManager {
         currentEntries = entries
     }
 
-    func listAllFolders() async -> [URL] {
-        guard let root = rootURL else { return [] }
+    func listImmediateSubfolders(in directory: URL) async -> [URL] {
         let categories = enabledCategories
         return await Task.detached(priority: .userInitiated) {
-            [root] + Self.collectAllDirectories(in: root, enabledCategories: categories)
+            Self.readDirectory(directory, enabledCategories: categories)
+                .filter { $0.isDirectory && !$0.isJunk && !$0.isHiddenDotFile }
+                .map(\.url)
+                .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
         }.value
     }
 
@@ -335,25 +345,58 @@ final class USBDriveManager {
             return
         }
 
-        isProcessing = true
-        defer { isProcessing = false }
-
         let targets = junkItems
-        let result = await Task.detached(priority: .userInitiated) {
-            Self.removeItemsOnDisk(targets)
-        }.value
+        let rootPath = rootURL?.standardizedFileURL.path ?? ""
 
-        await refreshAll()
+        isProcessing = true
+        isCleaningJunk = true
+        cleanupTotalCount = targets.count
+        cleanupProcessedCount = 0
+        cleanupDeletedCount = 0
+        cleanupFreedBytes = 0
+        cleanupCurrentFileName = ""
+        cleanupLogs = []
+        showCleanupProgressSheet = true
 
-        if result.deletedCount > 0 {
-            cleanupSummary = CleanupSummary(
-                deletedCount: result.deletedCount,
-                freedBytes: result.freedBytes,
-                actionTitle: "隐形垃圾清理完成！"
-            )
-        } else {
-            errorMessage = "部分系统保护文件无法删除，请检查 U 盘是否为只读格式（如 NTFS）。"
+        defer {
+            isProcessing = false
+            isCleaningJunk = false
         }
+
+        for item in targets {
+            cleanupCurrentFileName = item.name
+            let itemPath = item.url.standardizedFileURL.path
+            let relative = itemPath.hasPrefix(rootPath)
+                ? String(itemPath.dropFirst(rootPath.count))
+                : item.name
+
+            let succeeded = await Task.detached(priority: .userInitiated) {
+                do {
+                    try FileManager.default.removeItem(at: item.url)
+                    return true
+                } catch {
+                    return false
+                }
+            }.value
+
+            cleanupProcessedCount += 1
+            if succeeded {
+                cleanupDeletedCount += 1
+                cleanupFreedBytes += item.size
+            }
+            cleanupLogs.insert(
+                CleanupLogEntry(
+                    name: item.name,
+                    path: relative.isEmpty ? item.name : relative,
+                    size: item.size,
+                    succeeded: succeeded
+                ),
+                at: 0
+            )
+        }
+
+        cleanupCurrentFileName = ""
+        await refreshAll()
     }
 
     func deleteItems(_ items: [USBFileItem]) async {
@@ -368,11 +411,8 @@ final class USBDriveManager {
         await refreshAll()
 
         if result.deletedCount > 0 {
-            cleanupSummary = CleanupSummary(
-                deletedCount: result.deletedCount,
-                freedBytes: result.freedBytes,
-                actionTitle: "文件删除成功！"
-            )
+            let freedText = ByteCountFormatter.string(fromByteCount: result.freedBytes, countStyle: .file)
+            debugBanner = "已删除 \(result.deletedCount) 项（释放 \(freedText)）"
         } else {
             errorMessage = "删除失败，请确认 U 盘可写。"
         }

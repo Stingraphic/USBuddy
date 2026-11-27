@@ -68,6 +68,9 @@ struct ContentView: View {
         .sheet(isPresented: $manager.showImportConflictSheet) {
             ImportConflictSheet(manager: manager)
         }
+        .sheet(isPresented: $manager.showCleanupProgressSheet) {
+            CleanupProgressSheet(manager: manager)
+        }
         .alert("提示", isPresented: Binding(
             get: { manager.statusMessage != nil },
             set: { if !$0 { manager.statusMessage = nil } }
