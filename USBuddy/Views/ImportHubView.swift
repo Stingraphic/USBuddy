@@ -10,6 +10,7 @@ struct ImportHubView: View {
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
+    @State private var showFolderPicker = false
 
     var body: some View {
         ZStack {
@@ -99,6 +100,9 @@ struct ImportHubView: View {
                 Task { await manager.createFolder(named: name) }
             }
         }
+        .sheet(isPresented: $showFolderPicker) {
+            FolderPickerSheet(manager: manager)
+        }
     }
 
     private var connectPromptCard: some View {
@@ -134,28 +138,51 @@ struct ImportHubView: View {
 
     private var targetDirectoryCard: some View {
         HStack(spacing: 12) {
-            Image(systemName: "externaldrive.fill")
+            Image(systemName: "folder.fill")
                 .font(.title3)
                 .frame(width: 40, height: 40)
                 .background(.white.opacity(0.12), in: Circle())
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("当前写入目标")
+            VStack(alignment: .leading, spacing: 3) {
+                Text("导入目标 · \(manager.driveStats.formattedAvailable)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(manager.currentDirectoryURL?.lastPathComponent ?? manager.driveStats.driveName)
+                Text(targetFolderDisplayPath)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                    .truncationMode(.middle)
             }
 
             Spacer()
 
-            Text(manager.driveStats.formattedAvailable)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Button {
+                showFolderPicker = true
+            } label: {
+                Text("选择文件夹")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.white, in: Capsule())
+            }
         }
         .padding(16)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
+    }
+
+    private var targetFolderDisplayPath: String {
+        guard let root = manager.rootURL?.standardizedFileURL,
+              let current = manager.currentDirectoryURL?.standardizedFileURL else {
+            return manager.driveStats.driveName
+        }
+        if root == current {
+            return "\(manager.driveStats.driveName)（根目录）"
+        }
+        if current.path.hasPrefix(root.path) {
+            let suffix = String(current.path.dropFirst(root.path.count))
+            return suffix.isEmpty ? manager.driveStats.driveName : suffix
+        }
+        return current.lastPathComponent
     }
 
     private func importActionCard(

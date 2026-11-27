@@ -319,6 +319,14 @@ final class USBDriveManager {
         currentEntries = entries
     }
 
+    func listAllFolders() async -> [URL] {
+        guard let root = rootURL else { return [] }
+        let categories = enabledCategories
+        return await Task.detached(priority: .userInitiated) {
+            [root] + Self.collectAllDirectories(in: root, enabledCategories: categories)
+        }.value
+    }
+
     // MARK: - Cleanup & Delete
 
     func cleanAllJunk() async {
@@ -804,6 +812,47 @@ final class USBDriveManager {
             index += 1
         }
         return candidate
+    }
+
+    nonisolated private static func collectAllDirectories(
+        in directory: URL,
+        enabledCategories: Set<JunkCategory>
+    ) -> [URL] {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .nameKey]
+        var childURLs: [URL] = []
+
+        if let urls = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: keys,
+            options: []
+        ) {
+            childURLs = urls
+        } else {
+            var coordError: NSError?
+            NSFileCoordinator().coordinate(readingItemAt: directory, options: [], error: &coordError) { coordinatedURL in
+                if let urls = try? FileManager.default.contentsOfDirectory(
+                    at: coordinatedURL,
+                    includingPropertiesForKeys: keys,
+                    options: []
+                ) {
+                    childURLs = urls
+                }
+            }
+        }
+
+        var collected: [URL] = []
+        for url in childURLs {
+            guard let item = buildFileItem(from: url, enabledCategories: enabledCategories),
+                  item.isDirectory,
+                  !item.isJunk else {
+                continue
+            }
+            collected.append(url)
+            collected.append(contentsOf: collectAllDirectories(in: url, enabledCategories: enabledCategories))
+        }
+        return collected.sorted {
+            $0.path.localizedStandardCompare($1.path) == .orderedAscending
+        }
     }
 
     // MARK: - Duplicate Detection (Size -> Partial Sample -> Full SHA256)
