@@ -228,6 +228,27 @@ struct FileBrowserView: View {
 
     private var fileList: some View {
         List {
+            ForEach(manager.filteredEntries) { item in
+                fileRow(item)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button {
+                            Task {
+                                try? await Task.sleep(for: .milliseconds(150))
+                                await manager.deleteItems([item])
+                            }
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
+                        .tint(.red)
+                    }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .overlay {
             if manager.filteredEntries.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "folder")
@@ -237,28 +258,9 @@ struct FileBrowserView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 48)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            } else {
-                ForEach(manager.filteredEntries) { item in
-                    fileRow(item)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                Task { await manager.deleteItems([item]) }
-                            } label: {
-                                Label("删除", systemImage: "trash")
-                            }
-                        }
-                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .refreshable {
             if let current = manager.currentDirectoryURL {
                 await manager.loadDirectory(current)
