@@ -33,19 +33,21 @@ Designed to eliminate hidden macOS/iOS metadata files (`._*`, `.DS_Store`, etc.)
 
 ## Features
 
-* **Type-C USB Drive Mounting & Storage Stats**
+* **Type-C USB Drive Mounting & Remaining Space**
   * Mount external USB-C drives via the native system picker with persistent bookmark reconnection, mount path display, and one-tap unmount.
+  * View available **remaining space**, used storage, and total capacity across the Dashboard, File Browser, and Import Hub.
 * **One-Tap Hidden Junk Cleanup**
   * Detects and removes `._*` (AppleDouble), `.DS_Store`, `.Trashes`, `.Spotlight-V100`, `.fseventsd`, and `.TemporaryItems`.
-  * Customize enabled cleanup categories in the **Rules** tab.
+  * Displays a live cleanup progress window listing every deleted item, path, and freed size; customize enabled categories in the **Rules** tab.
 * **Duplicate File Detection & Cleanup**
   * **Similar Filenames**: Automatically groups numbered/copy variants such as `song 2.mp3`, `song2.mp3`, `song (1).mp3`, `song（2）.mp3`, and `song copy.mp3`.
   * **Exact Content Match**: 3-stage verification (size → head/tail sample → full `SHA-256`) to safely remove redundant copies.
 * **Clean Imports & Conflict Resolution**
-  * Batch import from **Photos** or **Files** directly into the current USB folder while stripping `._*` sidecar files.
+  * Browse folders hierarchically to pick the destination directory, batch import from **Photos** or **Files** while stripping `._*` sidecar files.
+  * Displays a pinned progress bar at the top of the screen during imports (count, percentage, and current filename).
   * When filename conflicts occur, review and choose **Keep Existing**, **Keep New**, or **Keep Both** per file or in bulk.
 * **Built-in File Browser**
-  * Breadcrumb navigation, search, sorting (name / size / modified date), batch delete, rename, new folder, QuickLook preview, and share/export.
+  * Breadcrumb navigation, search, sorting (name / size / modified date), swipe-to-delete, batch delete, rename, new folder, QuickLook preview, and share/export.
 
 ---
 
@@ -64,7 +66,7 @@ Designed to eliminate hidden macOS/iOS metadata files (`._*`, `.DS_Store`, etc.)
 3. Connect a USB-C iPhone / iPad and build & run.
 
 ### Option 2: Sideload Unsigned IPA
-Download `USBuddy_Unsigned.ipa` from [GitHub Releases](https://github.com/Stingraphic/USBuddy/releases) and sign it with AltStore, SideStore, or your preferred signing tool.
+Download `USBuddy-v1.0.x-iOS-unsigned.ipa` (e.g. `USBuddy-v1.0.6-iOS-unsigned.ipa`) from [GitHub Releases](https://github.com/Stingraphic/USBuddy/releases) and sign it with AltStore, SideStore, or your preferred signing tool.
 
 > **Permissions Note**: External USB drive access on iOS relies on `UIDocumentPickerViewController` security-scoped URLs. When sideloading, make sure your Bundle ID matches your `.mobileprovision` profile and entitlements. If running inside LiveContainer, enable both `Fix File Picker` and `Use LiveContainer's Bundle ID`.
 

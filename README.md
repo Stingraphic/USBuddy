@@ -33,19 +33,21 @@ iOS 26+ · iPadOS 26+
 
 ## 核心功能
 
-* **外接 Type-C U 盘挂载与容量统计**
+* **外接 Type-C U 盘挂载与剩余空间查看**
   * 通过系统目录选择器挂载外接 U 盘，支持保存书签快捷重连、显示挂载路径与随时退出挂载。
+  * 在首页、文件浏览器与导入页实时查看 U 盘**剩余可用空间**、已用空间与总容量。
 * **一键清理 `.xxxx` 隐藏残留**
   * 精准扫描并清理 `._*`（AppleDouble）、`.DS_Store`、`.Trashes`、`.Spotlight-V100`、`.fseventsd`、`.TemporaryItems`。
-  * 支持在「规则」页自定义勾选需要清理的类别。
+  * 清理过程中提供实时日志窗口，展示删除进度与每条已清理文件的路径和释放体积；支持在「规则」页自定义勾选清理类别。
 * **重复文件识别与清理**
   * **相似文件名**：自动识别 `xxx 2`、`xxx2`、`xxx (1)`、`xxx（2）`、`xxx 副本` 等重复命名文件。
   * **内容相同**：按体积 → 首尾采样 → 全量 `SHA-256` 三段式精确比对，智能保留原文件，一键清理多余副本。
 * **纯净导入与同名冲突处理**
-  * 支持从「相册」或「文件」App 批量导入到 U 盘当前目录，自动清除伴生 `._*` 文件。
+  * 支持逐级浏览选择导入目标文件夹，从「相册」或「文件」App 批量导入并自动清除伴生 `._*` 文件。
+  * 导入期间在页面顶部置顶显示复制进度条（当前序号、百分比与文件名）。
   * 导入出现同名文件时，支持逐个或批量选择「保留原文件 / 保留新文件 / 两个都保留」。
 * **内置 U 盘文件浏览器**
-  * 支持目录面包屑导航、搜索、排序（名称 / 大小 / 修改时间）、多选删除、重命名、新建文件夹、QuickLook 原生预览与导出分享。
+  * 支持目录面包屑导航、搜索、排序（名称 / 大小 / 修改时间）、左滑删除、多选删除、重命名、新建文件夹、QuickLook 原生预览与导出分享。
 
 ---
 
@@ -64,7 +66,7 @@ iOS 26+ · iPadOS 26+
 3. 连接支持 Type-C 的 iPhone / iPad 直接运行安装。
 
 ### 方式二：使用未签名包自签（Sideload）
-前往 [GitHub Releases](https://github.com/Stingraphic/USBuddy/releases) 下载最新 `USBuddy_Unsigned.ipa`，通过 AltStore / SideStore / 个人签名工具签名安装。
+前往 [GitHub Releases](https://github.com/Stingraphic/USBuddy/releases) 下载最新 `USBuddy-v1.0.x-iOS-unsigned.ipa`（例如 `USBuddy-v1.0.6-iOS-unsigned.ipa`），通过 AltStore / SideStore / 个人签名工具签名安装。
 
 > **权限说明**：由于 iOS 外接 U 盘访问依赖系统安全作用域授权（`UIDocumentPickerViewController`），自签时请确保签名所使用的 Bundle ID 与描述文件（`.mobileprovision`）及 Entitlements 完全一致，不要随意修改为与描述文件不匹配的 Bundle ID；若使用 LiveContainer 运行，请在容器设置中开启 `Fix File Picker` 与 `Use LiveContainer's Bundle ID`。
 
