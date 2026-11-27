@@ -43,6 +43,15 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .safeAreaInset(edge: .top) {
+            if manager.isImporting {
+                importProgressBanner
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: manager.isImporting)
         .sheet(item: $manager.activePickerRequest) { request in
             SystemDocumentPicker(request: request) { urls in
                 manager.handlePickerResult(request: request, urls: urls)
@@ -75,6 +84,40 @@ struct ContentView: View {
         } message: {
             Text(manager.errorMessage ?? "")
         }
+    }
+
+    private var importProgressBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(0.8)
+
+                Text("正在导入到 U 盘（\(manager.importCurrentIndex)/\(manager.importTotalCount)）")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Text("\(Int((manager.importProgress * 100).rounded()))%")
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            ProgressView(value: manager.importProgress, total: 1.0)
+                .tint(.white)
+
+            if !manager.importCurrentFileName.isEmpty {
+                Text(manager.importCurrentFileName)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassEffect(.regular, in: .rect(cornerRadius: 20))
     }
 
     private var disconnectedFilesView: some View {

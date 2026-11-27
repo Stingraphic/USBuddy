@@ -33,6 +33,11 @@ final class USBDriveManager {
     var isScanning: Bool = false
     var isScanningDuplicates: Bool = false
     var isProcessing: Bool = false
+    var isImporting: Bool = false
+    var importProgress: Double = 0
+    var importCurrentIndex: Int = 0
+    var importTotalCount: Int = 0
+    var importCurrentFileName: String = ""
     var pendingImportConflicts: [ImportConflictItem] = []
     var showImportConflictSheet: Bool = false
     var lastImportSuccessCount: Int = 0
@@ -405,64 +410,95 @@ final class USBDriveManager {
 
     // MARK: - Import & Basic File Operations
 
+    func beginImportProgress(total: Int) {
+        isImporting = true
+        importTotalCount = max(1, total)
+        importCurrentIndex = 0
+        importProgress = 0
+        importCurrentFileName = ""
+    }
+
+    func updateImportProgress(current: Int, fileName: String) {
+        importCurrentIndex = current
+        importCurrentFileName = fileName
+        importProgress = min(1.0, max(0.0, Double(current) / Double(max(1, importTotalCount))))
+    }
+
+    func endImportProgress() {
+        isImporting = false
+        importProgress = 0
+        importCurrentIndex = 0
+        importTotalCount = 0
+        importCurrentFileName = ""
+    }
+
     func importFiles(urls: [URL], to destinationDirectory: URL? = nil) async {
-        guard let targetDir = destinationDirectory ?? currentDirectoryURL else { return }
+        guard let targetDir = destinationDirectory ?? currentDirectoryURL, !urls.isEmpty else { return }
         clearImportConflicts()
         isProcessing = true
-        defer { isProcessing = false }
+        beginImportProgress(total: urls.count)
+        defer {
+            isProcessing = false
+            endImportProgress()
+        }
 
-        let result = await Task.detached(priority: .userInitiated) {
-            var count = 0
-            var conflicts: [ImportConflictItem] = []
-            let fm = FileManager.default
+        var importedCount = 0
+        var conflicts: [ImportConflictItem] = []
 
-            for sourceURL in urls {
+        for (index, sourceURL) in urls.enumerated() {
+            let fileName = sourceURL.lastPathComponent
+            updateImportProgress(current: index + 1, fileName: fileName)
+
+            let outcome = await Task.detached(priority: .userInitiated) { () -> (imported: Bool, conflict: ImportConflictItem?) in
+                let fm = FileManager.default
                 let accessed = sourceURL.startAccessingSecurityScopedResource()
                 defer {
                     if accessed { sourceURL.stopAccessingSecurityScopedResource() }
                 }
 
-                let fileName = sourceURL.lastPathComponent
                 let directDestURL = targetDir.appendingPathComponent(fileName)
 
                 if fm.fileExists(atPath: directDestURL.path) {
                     let stageURL = fm.temporaryDirectory
                         .appendingPathComponent("USBuddyImport_\(UUID().uuidString)_\(fileName)")
                     guard Self.writeFileCleanly(from: sourceURL, to: stageURL, fileManager: fm) else {
-                        continue
+                        return (false, nil)
                     }
 
                     let existingValues = try? directDestURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
                     let newValues = try? stageURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
 
-                    conflicts.append(
-                        ImportConflictItem(
-                            fileName: fileName,
-                            existingURL: directDestURL,
-                            existingSize: Int64(existingValues?.fileSize ?? 0),
-                            existingDate: existingValues?.contentModificationDate,
-                            stagedNewURL: stageURL,
-                            newSize: Int64(newValues?.fileSize ?? 0),
-                            newDate: newValues?.contentModificationDate
-                        )
+                    let item = ImportConflictItem(
+                        fileName: fileName,
+                        existingURL: directDestURL,
+                        existingSize: Int64(existingValues?.fileSize ?? 0),
+                        existingDate: existingValues?.contentModificationDate,
+                        stagedNewURL: stageURL,
+                        newSize: Int64(newValues?.fileSize ?? 0),
+                        newDate: newValues?.contentModificationDate
                     )
+                    return (false, item)
                 } else {
-                    if Self.writeFileCleanly(from: sourceURL, to: directDestURL, fileManager: fm) {
-                        count += 1
-                    }
+                    let ok = Self.writeFileCleanly(from: sourceURL, to: directDestURL, fileManager: fm)
+                    return (ok, nil)
                 }
+            }.value
+
+            if outcome.imported {
+                importedCount += 1
+            } else if let conflict = outcome.conflict {
+                conflicts.append(conflict)
             }
-            return (count, conflicts)
-        }.value
+        }
 
         await refreshAll()
-        lastImportSuccessCount = result.0
+        lastImportSuccessCount = importedCount
 
-        if !result.1.isEmpty {
-            pendingImportConflicts = result.1
+        if !conflicts.isEmpty {
+            pendingImportConflicts = conflicts
             showImportConflictSheet = true
-        } else if result.0 > 0 {
-            statusMessage = "已成功导入 \(result.0) 个文件到 U 盘"
+        } else if importedCount > 0 {
+            statusMessage = "已成功导入 \(importedCount) 个文件到 U 盘"
         } else {
             errorMessage = "导入文件失败，请检查 U 盘空间或写入权限。"
         }

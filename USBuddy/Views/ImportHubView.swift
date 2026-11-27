@@ -196,11 +196,16 @@ struct ImportHubView: View {
     }
 
     private func handlePhotoImports(_ items: [PhotosPickerItem]) async {
+        manager.beginImportProgress(total: items.count)
+        defer { manager.endImportProgress() }
+
         var successCount = 0
         for (idx, item) in items.enumerated() {
+            let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+            let filename = "IMG_\(Int(Date().timeIntervalSince1970))_\(idx + 1).\(ext)"
+            manager.updateImportProgress(current: idx + 1, fileName: filename)
+
             if let data = try? await item.loadTransferable(type: Data.self) {
-                let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
-                let filename = "IMG_\(Int(Date().timeIntervalSince1970))_\(idx + 1).\(ext)"
                 if await manager.importPhotoData(data, filename: filename) {
                     successCount += 1
                 }

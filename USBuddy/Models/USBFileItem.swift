@@ -131,8 +131,18 @@ struct DriveStats: Sendable {
     }
 
     var formattedAvailable: String {
-        guard totalCapacity > 0 else { return "容量未知" }
-        return "可用 " + ByteCountFormatter.string(fromByteCount: availableCapacity, countStyle: .file)
+        guard totalCapacity > 0 else { return "剩余空间未知" }
+        return "剩余 " + ByteCountFormatter.string(fromByteCount: availableCapacity, countStyle: .file)
+    }
+
+    var formattedRemainingShort: String {
+        guard totalCapacity > 0 else { return "未知" }
+        return ByteCountFormatter.string(fromByteCount: availableCapacity, countStyle: .file)
+    }
+
+    var formattedUsed: String {
+        guard totalCapacity > 0 else { return "未知" }
+        return ByteCountFormatter.string(fromByteCount: usedCapacity, countStyle: .file)
     }
 
     var formattedTotal: String {

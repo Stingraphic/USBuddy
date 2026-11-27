@@ -321,10 +321,11 @@ struct DashboardView: View {
             .frame(height: 8)
 
             HStack {
-                Text(manager.driveStats.formattedAvailable)
-                    .font(.caption.weight(.medium))
+                Text("剩余可用 \(manager.driveStats.formattedRemainingShort)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
                 Spacer()
-                Text("总容量 \(manager.driveStats.formattedTotal)")
+                Text("已用 \(manager.driveStats.formattedUsed) / 共 \(manager.driveStats.formattedTotal)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

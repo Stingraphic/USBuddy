@@ -32,6 +32,8 @@ struct FileBrowserView: View {
 
                 searchBar
 
+                storageStatusStrip
+
                 fileList
             }
 
@@ -208,6 +210,20 @@ struct FileBrowserView: View {
         .padding(.vertical, 10)
         .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, 20)
+    }
+
+    private var storageStatusStrip: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "externaldrive")
+                .font(.caption2)
+            Text("U 盘剩余 \(manager.driveStats.formattedRemainingShort)")
+                .font(.caption.weight(.medium))
+            Spacer()
+            Text("共 \(manager.driveStats.formattedTotal)")
+                .font(.caption2)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 22)
     }
 
     private var fileList: some View {
@@ -388,11 +404,16 @@ struct FileBrowserView: View {
     }
 
     private func handlePhotoImports(_ items: [PhotosPickerItem]) async {
+        manager.beginImportProgress(total: items.count)
+        defer { manager.endImportProgress() }
+
         var successCount = 0
         for (idx, item) in items.enumerated() {
+            let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
+            let filename = "IMG_\(Int(Date().timeIntervalSince1970))_\(idx + 1).\(ext)"
+            manager.updateImportProgress(current: idx + 1, fileName: filename)
+
             if let data = try? await item.loadTransferable(type: Data.self) {
-                let ext = item.supportedContentTypes.first?.preferredFilenameExtension ?? "jpg"
-                let filename = "IMG_\(Int(Date().timeIntervalSince1970))_\(idx + 1).\(ext)"
                 if await manager.importPhotoData(data, filename: filename) {
                     successCount += 1
                 }
